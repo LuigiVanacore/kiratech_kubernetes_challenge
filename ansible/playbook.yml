@@ -1,0 +1,51 @@
+---
+- hosts: all
+  become: yes
+  connection: local
+  tasks:
+    - name: Update and upgrade apt packages
+      apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: Install required packages
+      apt:
+        name:
+          - curl
+          - apt-transport-https
+          - ca-certificates
+          - software-properties-common
+        state: present
+
+    - name: Ensure swap is disabled
+      command: swapoff -a
+
+    - name: Remove swap entry from fstab
+      replace:
+        path: /etc/fstab
+        regexp: '^\s*([^#\s]+\s+)\s*swap\s+(\w+)\s+(\w+)\s+(\d+)\s+(\d+)\s*$'
+        replace: '#\1swap\t\2\t\3\t\4\t\5'
+
+    - name: Ensure ext4 filesystem is present
+      filesystem:
+        fstype: ext4
+        dev: /dev/sda1
+
+    - name: Ensure directory /var/lib/kubelet exists
+      file:
+        path: /var/lib/kubelet
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+- hosts: master
+  become: yes
+  tasks:
+    - name: Ensure directory /var/lib/etcd exists
+      file:
+        path: /var/lib/etcd
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
