@@ -1,7 +1,6 @@
 ---
 - hosts: all
   become: yes
-  connection: local
   tasks:
     - name: Update and upgrade apt packages
       apt:
