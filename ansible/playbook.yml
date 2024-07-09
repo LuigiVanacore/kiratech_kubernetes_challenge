@@ -1,10 +1,10 @@
 ---
 - hosts: all
-  become: yes
+  become: true
   tasks:
     - name: Update and upgrade apt packages
       apt:
-        update_cache: yes
+        update_cache: true
         upgrade: dist
 
     - name: Install required packages
@@ -16,14 +16,17 @@
           - software-properties-common
         state: present
 
-    - name: Ensure swap is disabled
-      command: swapoff -a
+    - name: Disable SWAP since kubernetes can't work with swap enabled (1/2)
+      shell: |
+        swapoff -a
+      when: kubernetes_installed is changed
 
-    - name: Remove swap entry from fstab
+    - name: Disable SWAP in fstab since kubernetes can't work with swap enabled (2/2)
       replace:
         path: /etc/fstab
-        regexp: '^\s*([^#\s]+\s+)\s*swap\s+(\w+)\s+(\w+)\s+(\d+)\s+(\d+)\s*$'
-        replace: '#\1swap\t\2\t\3\t\4\t\5'
+        regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
+        replace: '# \1'
+      when: kubernetes_installed is changed
 
     - name: Ensure ext4 filesystem is present
       filesystem:
@@ -39,7 +42,7 @@
         mode: '0755'
 
 - hosts: master
-  become: yes
+  become: true
   tasks:
     - name: Ensure directory /var/lib/etcd exists
       file:
