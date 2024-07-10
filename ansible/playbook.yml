@@ -16,6 +16,10 @@
           - software-properties-common
         state: present
 
+    - name: Check swap status
+      shell: "swapon --show"
+      register: swap_status
+    
     - name: Disable SWAP since kubernetes can't work with swap enabled (1/2)
       command: swapoff -a
       when: swap_status.stdout_lines | length > 0
