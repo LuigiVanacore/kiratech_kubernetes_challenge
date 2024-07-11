@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Items</title>
+</head>
+<body>
+  <h1>Items</h1>
+  <ul>
+    <% items.forEach(item => { %>
+      <li><%= item.name %></li>
+    <% }); %>
+  </ul>
+  <form action="/add" method="post">
+    <input type="text" name="name" required>
+    <button type="submit">Add Item</button>
+  </form>
+</body>
+</html>
