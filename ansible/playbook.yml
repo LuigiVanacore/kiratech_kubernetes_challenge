@@ -14,25 +14,60 @@
           - apt-transport-https
           - ca-certificates
           - software-properties-common
+          - socat
         state: present
 
-    - name: Check swap status
-      shell: "swapon --show"
-      register: swap_status
-    
-    - name: Disable SWAP since kubernetes can't work with swap enabled (1/2)
-      command: swapoff -a
-      when: swap_status.stdout_lines | length > 0
-      changed_when: swap_status.stdout_lines | length > 0
+    - name: Add Docker's official GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
 
-    - name: Disable SWAP in fstab since kubernetes can't work with swap enabled (2/2)
+    - name: Set up the Docker repository
+      apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable
+        state: present
+
+    - name: Update apt package index after adding Docker repo
+      apt:
+        update_cache: yes
+
+    - name: Install Docker CE
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: present
+
+    - name: Start and enable Docker service
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Check if swap is enabled
+      set_fact:
+        swap_enabled: "{{ ansible_swaptotal_mb > 0 }}"
+
+    - name: Disable SWAP since Kubernetes can't work with swap enabled (1/2)
+      command: swapoff -a
+      when: swap_enabled
+      changed_when: swap_enabled
+
+    - name: Disable SWAP in fstab since Kubernetes can't work with swap enabled (2/2)
       replace:
         path: /etc/fstab
         regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
         replace: '# \1'
       register: fstab_update
       changed_when: fstab_update.changed
+      when: swap_enabled
 
+    - name: Print swap status
+      debug:
+        msg: "Swap has been disabled."
+      when: swap_enabled
+    
     - name: Ensure ext4 filesystem is present
       filesystem:
         fstype: ext4
