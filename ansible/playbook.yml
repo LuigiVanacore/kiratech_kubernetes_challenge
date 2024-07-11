@@ -67,7 +67,7 @@
       debug:
         msg: "Swap has been disabled."
       when: swap_enabled
-    
+
     - name: Ensure ext4 filesystem is present
       filesystem:
         fstype: ext4
