@@ -1,15 +1,23 @@
 const express = require('express');
+const { createProxyMiddleware } = require('http-proxy-middleware');
 const path = require('path');
+
 const app = express();
 const port = 3000;
+const backendUrl = process.env.BACKEND_URL || 'http://localhost:8080';
 
-app.use(express.static('public'));
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+// Serve static files from the public directory
+app.use(express.static(path.join(__dirname, 'public')));
 
-// Serve the HTML file
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+// Proxy API requests to the backend
+app.use('/api', createProxyMiddleware({
+  target: backendUrl,
+  changeOrigin: true
+}));
+
+// The "catchall" handler: for any request that doesn't match one above, send back the index.html file.
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public/index.html'));
 });
 
 app.listen(port, () => {
