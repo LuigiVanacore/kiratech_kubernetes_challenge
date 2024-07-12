@@ -14,7 +14,7 @@
     - name: Disable and stop UFW firewall
       systemd:
         name: ufw
-        enabled: no
+        enabled: false
         state: stopped
 
     - name: Disable swap
@@ -67,18 +67,16 @@
         state: present
 
     - name: Add Docker's official GPG key
-      get_url:
+      ansible.builtin.apt_key:
         url: https://download.docker.com/linux/ubuntu/gpg
-        dest: /etc/apt/trusted.gpg.d/docker.gpg
-        mode: '0644'
+        state: present
+        keyring: /usr/share/keyrings/docker-archive-keyring.gpg
 
     - name: Add Docker apt repository
-      apt_repository:
-        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
         state: present
-
-    - name: Update apt cache
-      apt:
+        filename: docker
         update_cache: true
 
     - name: Install containerd
@@ -100,20 +98,16 @@
         enabled: true
 
     - name: Add Kubernetes GPG key
-      get_url:
+      ansible.builtin.apt_key:
         url: https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key
-        dest: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-        mode: '0644'
+        state: present
+        keyring: /usr/share/keyrings/kubernetes-archive-keyring.gpg
 
     - name: Add Kubernetes apt repository
-      copy:
-        dest: /etc/apt/sources.list.d/kubernetes.list
-        content: |
-          deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /
-        mode: '0644'
-
-    - name: Update apt cache
-      apt:
+      ansible.builtin.apt_repository:
+        repo: "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /"
+        state: present
+        filename: kubernetes
         update_cache: true
 
     - name: Install Kubernetes components
@@ -125,12 +119,8 @@
         state: present
 
     - name: Hold Kubernetes packages
-      apt:
-        name:
-          - kubelet
-          - kubeadm
-          - kubectl
-        state: hold
+      shell: |
+        sudo apt-mark hold kubelet kubeadm kubectl
 
     - name: Enable SSH password authentication
       lineinfile:
