@@ -10,6 +10,7 @@
         swapoff -a
       args:
         warn: false
+      changed_when: false
 
     - name: Stop and Disable firewall
       systemd:
@@ -25,12 +26,14 @@
             content: |
               overlay
               br_netfilter
+            mode: '0644'
         - name: Load kernel modules
           modprobe:
             name: "{{ item }}"
           with_items:
             - overlay
             - br_netfilter
+          changed_when: false
 
     - name: Add Kernel settings
       block:
@@ -41,6 +44,7 @@
               net.bridge.bridge-nf-call-ip6tables = 1
               net.bridge.bridge-nf-call-iptables  = 1
               net.ipv4.ip_forward                 = 1
+            mode: '0644'
         - name: Apply sysctl settings
           command: sysctl --system
           register: sysctl_output
@@ -51,6 +55,7 @@
         - name: Update apt cache
           apt:
             update_cache: yes
+          changed_when: false
         - name: Install dependencies
           apt:
             name:
@@ -61,15 +66,21 @@
               - lsb-release
             state: present
         - name: Add Docker’s official GPG key
-          command: curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+          get_url:
+            url: https://download.docker.com/linux/ubuntu/gpg
+            dest: /etc/apt/keyrings/docker.gpg
+            mode: '0644'
         - name: Set up Docker repository
           copy:
             dest: /etc/apt/sources.list.d/docker.list
             content: |
               deb [arch={{ ansible_architecture }} signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
+            mode: '0644'
+          changed_when: false
         - name: Update apt cache again
           apt:
             update_cache: yes
+          changed_when: false
         - name: Install containerd
           apt:
             name: containerd.io
@@ -78,6 +89,8 @@
           shell: |
             containerd config default > /etc/containerd/config.toml
             sed -i 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/config.toml
+          args:
+            creates: /etc/containerd/config.toml
         - name: Restart and enable containerd
           systemd:
             name: containerd
@@ -87,18 +100,24 @@
     - name: Set up kubernetes repo
       block:
         - name: Add Kubernetes GPG key
-          command: curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+          get_url:
+            url: https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key
+            dest: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+            mode: '0644'
         - name: Add Kubernetes repository
           copy:
             dest: /etc/apt/sources.list.d/kubernetes.list
             content: |
               deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /
+            mode: '0644'
+          changed_when: false
 
     - name: Install Kubernetes components (kubeadm, kubelet and kubectl)
       block:
         - name: Update apt cache
           apt:
             update_cache: yes
+          changed_when: false
         - name: Install Kubernetes packages
           apt:
             name:
