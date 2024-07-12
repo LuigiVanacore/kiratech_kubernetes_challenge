@@ -1,93 +1,143 @@
 ---
-- hosts: all
-  become: true
+- name: Setup Kubernetes Environment
+  hosts: all
+  become: yes
+
   tasks:
-    - name: Update and upgrade apt packages
-      apt:
-        update_cache: true
-        upgrade: dist
+    - name: Disable and turn off SWAP
+      shell: |
+        sed -i '/swap/d' /etc/fstab
+        swapoff -a
+      args:
+        warn: false
 
-    - name: Install required packages
-      apt:
-        name:
-          - curl
-          - apt-transport-https
-          - ca-certificates
-          - software-properties-common
-          - socat
-        state: present
-
-    - name: Add Docker's official GPG key
-      apt_key:
-        url: https://download.docker.com/linux/ubuntu/gpg
-        state: present
-
-    - name: Set up the Docker repository
-      apt_repository:
-        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable
-        state: present
-
-    - name: Update apt package index after adding Docker repo
-      apt:
-        update_cache: true
-
-    - name: Install Docker CE
-      apt:
-        name:
-          - docker-ce
-          - docker-ce-cli
-          - containerd.io
-        state: present
-
-    - name: Start and enable Docker service
+    - name: Stop and Disable firewall
       systemd:
-        name: docker
-        state: started
-        enabled: true
+        name: ufw
+        enabled: no
+        state: stopped
 
-    - name: Check if swap is enabled
-      set_fact:
-        swap_enabled: "{{ ansible_swaptotal_mb > 0 }}"
+    - name: Enable and Load Kernel modules
+      block:
+        - name: Configure kernel modules
+          copy:
+            dest: /etc/modules-load.d/containerd.conf
+            content: |
+              overlay
+              br_netfilter
+        - name: Load kernel modules
+          modprobe:
+            name: "{{ item }}"
+          with_items:
+            - overlay
+            - br_netfilter
 
-    - name: Disable SWAP since Kubernetes can't work with swap enabled (1/2)
-      command: swapoff -a
-      when: swap_enabled
-      changed_when: swap_enabled
+    - name: Add Kernel settings
+      block:
+        - name: Configure kernel settings
+          copy:
+            dest: /etc/sysctl.d/kubernetes.conf
+            content: |
+              net.bridge.bridge-nf-call-ip6tables = 1
+              net.bridge.bridge-nf-call-iptables  = 1
+              net.ipv4.ip_forward                 = 1
+        - name: Apply sysctl settings
+          command: sysctl --system
+          register: sysctl_output
+          changed_when: "'changed' in sysctl_output.stdout"
 
-    - name: Disable SWAP in fstab since Kubernetes can't work with swap enabled (2/2)
-      replace:
-        path: /etc/fstab
-        regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
-        replace: '# \1'
-      register: fstab_update
-      changed_when: fstab_update.changed
-      when: swap_enabled
+    - name: Install containerd runtime
+      block:
+        - name: Update apt cache
+          apt:
+            update_cache: yes
+        - name: Install dependencies
+          apt:
+            name:
+              - apt-transport-https
+              - ca-certificates
+              - curl
+              - gnupg
+              - lsb-release
+            state: present
+        - name: Add Docker’s official GPG key
+          command: curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+        - name: Set up Docker repository
+          copy:
+            dest: /etc/apt/sources.list.d/docker.list
+            content: |
+              deb [arch={{ ansible_architecture }} signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
+        - name: Update apt cache again
+          apt:
+            update_cache: yes
+        - name: Install containerd
+          apt:
+            name: containerd.io
+            state: present
+        - name: Configure containerd
+          shell: |
+            containerd config default > /etc/containerd/config.toml
+            sed -i 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/config.toml
+        - name: Restart and enable containerd
+          systemd:
+            name: containerd
+            state: restarted
+            enabled: yes
 
-    - name: Print swap status
-      debug:
-        msg: "Swap has been disabled."
-      when: swap_enabled
+    - name: Set up kubernetes repo
+      block:
+        - name: Add Kubernetes GPG key
+          command: curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+        - name: Add Kubernetes repository
+          copy:
+            dest: /etc/apt/sources.list.d/kubernetes.list
+            content: |
+              deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /
 
-    - name: Ensure ext4 filesystem is present
-      filesystem:
-        fstype: ext4
-        dev: /dev/sda1
+    - name: Install Kubernetes components (kubeadm, kubelet and kubectl)
+      block:
+        - name: Update apt cache
+          apt:
+            update_cache: yes
+        - name: Install Kubernetes packages
+          apt:
+            name:
+              - kubeadm
+              - kubelet
+              - kubectl
+            state: present
 
-    - name: Ensure directory /var/lib/kubelet exists
-      file:
-        path: /var/lib/kubelet
-        state: directory
-        owner: root
-        group: root
-        mode: '0755'
+    - name: Enable ssh password authentication
+      block:
+        - name: Update SSH configuration to enable password authentication
+          lineinfile:
+            path: /etc/ssh/sshd_config
+            regexp: '^PasswordAuthentication '
+            line: 'PasswordAuthentication yes'
+            state: present
+        - name: Permit root login
+          lineinfile:
+            path: /etc/ssh/sshd_config
+            line: 'PermitRootLogin yes'
+            state: present
+        - name: Reload SSH service
+          systemd:
+            name: sshd
+            state: reloaded
 
-- hosts: master
-  become: true
-  tasks:
-    - name: Ensure directory /var/lib/etcd exists
-      file:
-        path: /var/lib/etcd
-        state: directory
-        owner: root
-        group: root
-        mode: '0755'
+    - name: Set root password
+      user:
+        name: root
+        password: "{{ 'kubeadmin' | password_hash('sha512') }}"
+      environment:
+        TERM: xterm
+
+    - name: Update /etc/hosts file
+      lineinfile:
+        path: /etc/hosts
+        line: "{{ item }}"
+        state: present
+      with_items:
+        - "172.16.16.100   kmaster.example.com     kmaster"
+        - "172.16.16.101   kworker1.example.com    kworker1"
+        - "172.16.16.102   kworker2.example.com    kworker2"
