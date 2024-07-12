@@ -1,7 +1,7 @@
 ---
 - name: Setup Kubernetes Environment
   hosts: all
-  become: yes
+  become: true
 
   tasks:
     - name: Disable and turn off SWAP
@@ -54,7 +54,7 @@
       block:
         - name: Update apt cache
           apt:
-            update_cache: yes
+            update_cache: true
           changed_when: false
         - name: Install dependencies
           apt:
@@ -80,7 +80,7 @@
           changed_when: false
         - name: Update apt cache again
           apt:
-            update_cache: yes
+            update_cache: true
           changed_when: false
         - name: Install containerd
           apt:
@@ -96,7 +96,7 @@
           systemd:
             name: containerd
             state: restarted
-            enabled: yes
+            enabled: true
 
     - name: Set up kubernetes repo
       block:
@@ -118,7 +118,7 @@
       block:
         - name: Update apt cache
           apt:
-            update_cache: yes
+            update_cache: true
           changed_when: false
         - name: Install Kubernetes packages
           apt:
