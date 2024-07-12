@@ -1,5 +1,3 @@
-: Tflint Checks on Terraform Code
-    
 on:
   push:
     branches: 
