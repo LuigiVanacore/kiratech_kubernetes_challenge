@@ -1,0 +1,146 @@
+---
+- hosts: all
+  become: true
+  tasks:
+    - name: Install necessary packages
+      apt:
+        name: "{{ packages }}"
+        state: present
+        update_cache: yes
+      vars:
+        packages:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+          - gnupg2
+          - net-tools
+
+    - name: Install containerd
+      apt:
+        name: containerd
+        state: present
+        update_cache: yes
+
+    - name: Remove swapfile from /etc/fstab
+      mount:
+        name: swap
+        fstype: swap
+        state: absent
+
+    - name: Disable swap
+      command: swapoff -a
+      when: ansible_swaptotal_mb > 0
+
+
+    - name: Add Kubernetes GPG key
+      ansible.builtin.apt_key:
+        url: https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key
+        state: present
+        keyring: /usr/share/keyrings/kubernetes-archive-keyring.gpg
+
+    - name: Add Kubernetes apt repository
+      ansible.builtin.apt_repository:
+        repo: >-
+          deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg]
+          https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /
+        state: present
+        filename: kubernetes
+        update_cache: true
+
+    - name: Install Kubernetes binaries
+      apt:
+        name: "{{ packages }}"
+        state: present
+        update_cache: yes
+      vars:
+        packages:
+          - kubelet
+          - kubeadm
+          - kubectl
+
+    - name: Configure containerd
+      blockinfile:
+        create: true
+        path: /etc/modules-load.d/containerd.conf
+        block: |
+          overlay
+          br_netfilter
+
+    - name: Enable kernel modules
+      shell: |
+        modprobe overlay
+        modprobe br_netfilter
+
+    - name: Configure IP forwarding and iptables
+      blockinfile:
+        create: true
+        path: /etc/sysctl.conf
+        block: |
+          net.bridge.bridge-nf-call-iptables = 1
+          net.ipv4.ip_forward = 1
+
+    - name: Persist changes
+      command: sysctl -p
+
+    - name: Get IP eth1 addr
+      shell: ifconfig eth1 | grep 'inet ' | awk '{ print $2 }'
+      register: output
+
+
+
+    - name: Initialize the Kubernetes cluster using kubeadm
+      command: kubeadm init --apiserver-advertise-address="{{ output.stdout }}" --apiserver-cert-extra-sans="{{ output.stdout }}" --pod-network-cidr=172.16.0.0/16
+      register: kubeadm_output
+      
+
+
+    - name: Install Calico network plugin
+      command: kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/calico.yaml
+      when: "'calico' in kubeadm_output.stdout"
+
+    - name: Create kube directory
+      file:
+        path: /home/vagrant/.kube
+        state: directory
+        owner: vagrant
+        group: vagrant
+        mode: '0755'
+
+  
+
+    - name: Setup kubeconfig for vagrant user
+      copy:
+        src: /etc/kubernetes/admin.conf
+        dest: /home/vagrant/.kube/config
+        remote_src: yes
+        owner: vagrant
+        group: vagrant
+        mode: '0644'
+
+    - name: Download calico.yaml
+      get_url:
+        url: https://docs.projectcalico.org/v3.20/manifests/calico.yaml
+        dest: /home/vagrant/calico.yaml
+        mode: '0644'
+
+    - name: Add pod config to calico.yaml
+      lineinfile:
+        dest: /home/vagrant/calico.yaml
+        regexp: '^\s{12}#\s*- name: CALICO_IPV4POOL_CIDR.*$'
+        line: '            - name: CALICO_IPV4POOL_CIDR'
+
+    - name: Add pod config value to calico.yaml
+      lineinfile:
+        dest: /home/vagrant/calico.yaml
+        regexp: '^\s{12}#\s*  value: "192.168.0.0\/16".*$'
+        line: '              value: "172.16.0.0/16"'
+
+
+    - name: Generate join command
+      command: kubeadm token create --print-join-command
+      register: join_command
+
+    - name: Copy join command to local file
+      local_action: copy content="{{ join_command.stdout }}" dest="./join-command"
+      become: true
