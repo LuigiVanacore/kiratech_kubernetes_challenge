@@ -1,17 +1,21 @@
 Vagrant.configure("2") do |config|
   # Define the base box to use for all VMs
   config.vm.box = "ubuntu/jammy64"  # Ubuntu 22.04 LTS
-
+  config.vm.boot_timeout = 3000
 
   # Master node configuration
   config.vm.define "master" do |master|
     master.vm.hostname = "master"
     master.vm.network "private_network", ip: "10.0.0.10"
+    master.disksize.size = '20GB'
+    master.vm.network "forwarded_port", guest: 80, host: 8081
     master.vm.provider "virtualbox" do |vb|
-      vb.memory = 1048
-      vb.cpus = 1
+      vb.memory = 2048
+      vb.cpus = 2
       vb.customize ["modifyvm", :id, "--cableconnected1", "on"]
-      
+    end
+    master.vm.provision "ansible_local" do |ansible| 
+      ansible.playbook = "playbook.yml"
     end
   end
 
@@ -19,10 +23,14 @@ Vagrant.configure("2") do |config|
   config.vm.define "worker1" do |worker1|
     worker1.vm.hostname = "worker1"
     worker1.vm.network "private_network", ip: "10.0.0.11"
+    worker1.disksize.size = '20GB'
     worker1.vm.provider "virtualbox" do |vb|
       vb.memory = 1024
       vb.cpus = 1
       vb.customize ["modifyvm", :id, "--cableconnected1", "on"]
+    end
+    worker1.vm.provision "ansible_local" do |ansible| 
+      ansible.playbook = "playbook.yml"
     end
   end
 
@@ -30,29 +38,15 @@ Vagrant.configure("2") do |config|
   config.vm.define "worker2" do |worker2|
     worker2.vm.hostname = "worker2"
     worker2.vm.network "private_network", ip: "10.0.0.12"
+    worker2.disksize.size = '20GB'
     worker2.vm.provider "virtualbox" do |vb|
       vb.memory = 1024
       vb.cpus = 1
       vb.customize ["modifyvm", :id, "--cableconnected1", "on"]
     end
+    worker2.vm.provision "ansible_local" do |ansible| 
+      ansible.playbook = "playbook.yml"
+    end
   end
 
-  # Ansible controller node configuration
-  config.vm.define "ansible-controller" do |ansible|
-    ansible.vm.hostname = "ansible-controller"
-    ansible.vm.network "private_network", ip: "10.0.0.13"
-    ansible.vm.provider "virtualbox" do |vb|
-      vb.memory = 1024
-      vb.cpus = 1
-      vb.customize ["modifyvm", :id, "--cableconnected1", "on"]
-    end
-    ansible.vm.provision "file", source: "../ansible/playbook.yml", destination: "/home/vagrant/playbook.yml"
-    ansible.vm.provision "file", source: "../ansible/hosts.ini", destination: "/home/vagrant/hosts.ini"
-    # Install Ansible 5.2.0 on the ansible-controller VM
-    ansible.vm.provision "shell", inline: <<-SHELL
-      sudo apt-get update
-      sudo apt-get install -y python3 python3-pip
-      pip3 install ansible==5.2.0
-    SHELL
-  end
 end
