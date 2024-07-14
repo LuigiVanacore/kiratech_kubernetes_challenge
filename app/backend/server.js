@@ -11,30 +11,32 @@ app.use(cors());
 
 const mongoUrl = process.env.MONGO_URL;
 
-// MongoDB connection
-mongoose.connect(mongoUrl, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-}).catch(error => {
-  console.error('Error connecting to MongoDB:', error.message);
-});
+function connectWithRetry() {
+  return mongoose.connect(mongoUrl, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  }).then(() => {
+    console.log('Connessione MongoDB');
+  }).catch((error) => {
+    console.error('Errore connesione MongoDB:', error.message);
+    console.log('Retry 5 secondi...');
+    setTimeout(connectWithRetry, 5000); 
+  });
+}
+
+connectWithRetry();
 
 const db = mongoose.connection;
 db.on('error', (error) => {
   console.error('Connection error:', error.message);
 });
-db.once('open', () => {
-  console.log('Connected to MongoDB');
-});
 
-// Define a schema and model
 const itemSchema = new mongoose.Schema({
   name: String,
 });
 
 const Item = mongoose.model('Item', itemSchema);
 
-// Define routes
 app.get('/api/items', async (req, res) => {
   try {
     const items = await Item.find();

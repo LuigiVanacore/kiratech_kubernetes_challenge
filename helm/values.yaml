@@ -1,0 +1,39 @@
+namespace: kiratech-test
+
+backend:
+  image:
+    repository: safred89/backend-app
+    tag: latest
+  replicaCount: 3
+  service:
+    name: backend
+    port: 8080
+  env:
+    mongoUrl: "mongodb://root:example@mongodb:27017/"
+    mongoRootUsername: root
+    mongoRootPassword: example
+
+frontend:
+  image:
+    repository: safred89/frontend-app
+    tag: latest
+  replicaCount: 3
+  service:
+    name: frontend
+    port: 80
+    targertport: 3000
+    nodePort: 30080
+  env:
+    backendUrl: "http://backend:8080"
+
+mongodb:
+  image:
+    repository: mongo
+    tag: 4.4
+  replicaCount: 1
+  service:
+    name: mongodb
+    port: 27017
+  secret:
+    username: root
+    password: example
