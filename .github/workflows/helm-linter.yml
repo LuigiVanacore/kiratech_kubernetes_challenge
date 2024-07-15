@@ -9,4 +9,3 @@ jobs:
       uses: igabaydulin/helm-check-action@0.1.4
       env:
         CHART_LOCATION: ./helm
-        CHART_VALUES: ./helm-check/app.yaml
