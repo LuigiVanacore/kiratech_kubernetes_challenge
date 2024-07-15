@@ -1,0 +1,234 @@
+---
+- hosts: all
+  connection: local
+  become: true
+  
+
+  vars:
+    dns_servers:
+      - 8.8.8.8
+      - 1.1.1.1
+  tasks:
+    - name: Ensure /etc/systemd/resolved.conf.d exists
+      file:
+        path: /etc/systemd/resolved.conf.d
+        state: directory
+
+    - name: Create or update DNS configuration
+      copy:
+        dest: /etc/systemd/resolved.conf.d/dns_servers.conf
+        content: |
+          [Resolve]
+          DNS={{ dns_servers | join(' ') }}
+      notify:
+        - Restart systemd-resolved
+
+    - name: Install necessary packages
+      apt:
+        name: "{{ packages }}"
+        state: present
+        update_cache: yes
+      vars:
+        packages:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+          - gnupg2
+          - net-tools
+
+    - name: Install containerd
+      apt:
+        name: containerd
+        state: present
+        update_cache: yes
+    #kubernetes richiede che la memoria swap non ci sia
+    - name: Remove swapfile from /etc/fstab
+      mount:
+        name: "{{ item }}"
+        fstype: swap
+        state: absent
+      with_items:
+        - swap
+        - none
+
+    - name: Disable swap
+      command: swapoff -a
+      when: ansible_swaptotal_mb > 0
+
+    - name: Ensure the /etc/apt/keyrings directory exists
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+     #installo kubernetes
+    - name: Add Kubernetes GPG key
+      ansible.builtin.apt_key:
+        url: https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key
+        state: present
+        keyring: /usr/share/keyrings/kubernetes-archive-keyring.gpg
+
+    - name: Add Kubernetes apt repository
+      ansible.builtin.apt_repository:
+        repo: >-
+          deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg]
+          https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /
+        state: present
+        filename: kubernetes
+        update_cache: true
+
+    - name: Install Kubernetes binaries
+      apt:
+        name: "{{ packages }}"
+        state: present
+        update_cache: yes
+      vars:
+        packages:
+          - kubelet=1.29.0-*
+          - kubeadm=1.29.0-*
+          - kubectl=1.29.0-*
+
+    - name: Configure containerd
+      blockinfile:
+        create: true
+        path: /etc/modules-load.d/containerd.conf
+        block: |
+          overlay
+          br_netfilter
+
+    - name: Enable kernel modules
+      shell: |
+        modprobe overlay
+        modprobe br_netfilter
+
+    - name: Configure IP forwarding and iptables
+      blockinfile:
+        create: true
+        path: /etc/sysctl.conf
+        block: |
+          net.bridge.bridge-nf-call-iptables = 1
+          net.ipv4.ip_forward = 1
+
+    - name: Persist changes
+      command: sysctl -p
+
+
+    - name: Perform tasks only on master
+      when: inventory_hostname in groups['k8s-master']
+      block:
+        - name: Initialize the Kubernetes cluster using kubeadm
+          command: kubeadm init --apiserver-advertise-address=10.0.0.10 --apiserver-cert-extra-sans=10.0.0.10 --pod-network-cidr=172.16.1.0/16  --node-name "k8s-master" --ignore-preflight-errors Swap  
+          register: kubeadm_output
+
+        - name: Create kubeconfig directory
+          file:
+            path: /vagrant/kubeconfig
+            state: directory
+            owner: vagrant
+            group: vagrant
+            mode: '0755'
+
+        - name: Setup kubeconfig for vagrant user
+          copy:
+            src: /etc/kubernetes/admin.conf
+            dest: /vagrant/kubeconfig
+            remote_src: yes
+            owner: vagrant
+            group: vagrant
+            mode: '0644'
+
+    - name: Create kube directory
+      file:
+        path: /home/vagrant/.kube
+        state: directory
+        owner: vagrant
+        group: vagrant
+        mode: '0755'
+
+    - name: Setup kubeconfig for vagrant user
+      copy:
+        src: /etc/kubernetes/admin.conf
+        dest: /home/vagrant/.kube/config
+        remote_src: yes
+        owner: vagrant
+        group: vagrant
+        mode: '0644'
+    
+
+
+    - name: Perform tasks only on k8s-master
+      when: inventory_hostname in groups['k8s-master']
+      block:
+        #genero il comando di join per essere usati sui worker per essere aggiunti
+        # al cluster
+        - name: Generate join command
+          command: kubeadm token create --print-join-command
+          register: join_command
+
+        - name: Copy join command to local file
+          local_action: copy content="{{ join_command.stdout }}" dest="./join-command"
+          become: true
+
+    
+
+
+    - name: Perform tasks only on nodes
+      when: inventory_hostname in groups['nodes']
+      block:
+      #prendo ed eseguo il commando di join al cluster kubernetes
+        - name: Copy the join command to server location
+          copy: src=join-command dest=/tmp/join-command.sh mode=0777
+      
+        - name: Join the node to cluster
+          command: sh /tmp/join-command.sh
+
+
+    - name: Configure kubelet
+      lineinfile:
+        path: /lib/systemd/system/kubelet.service.d/10-kubeadm.conf
+        line: Environment="KUBELET_EXTRA_ARGS=--node-ip={{ output.stdout }}"
+
+    - name: Ensure .kube directory exists
+      file:
+        path: /home/vagrant/.kube
+        state: directory
+        owner: vagrant
+        group: vagrant
+
+    - name: Ensure .bashrc exists
+      file:
+        path: /home/vagrant/.bashrc
+        state: touch
+        owner: vagrant
+        group: vagrant
+
+    - name: Add KUBECONFIG to .bashrc if not already present
+      lineinfile:
+        path: /home/vagrant/.bashrc
+        regexp: '^export KUBECONFIG="\$HOME/.kube/conf"$'
+        line: 'export KUBECONFIG="$HOME/.kube/conf"'
+        state: present
+        owner: vagrant
+        group: vagrant
+
+
+    - name: Ensure kubelet service file has correct permissions
+      file:
+        path: /lib/systemd/system/kubelet.service
+        mode: '0600'
+
+    - name: Ensure kubelet config file has correct permissions
+      file:
+        path: /var/lib/kubelet/config.yaml
+        mode: '0600'
+
+
+  handlers:
+    - name: Restart systemd-resolved
+      systemd:
+        name: systemd-resolved
+        state: restarted
+
+
+
