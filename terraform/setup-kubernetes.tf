@@ -1,34 +1,56 @@
+terraform {
+  required_providers {
+    local = {
+      source  = "hashicorp/local"
+      version = "2.1.0"
+    }
+    null = {
+      source  = "hashicorp/null"
+      version = "3.1.0"
+    }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "2.14.1"
+    }
+  }
+
+  required_version = ">= 1.0.0"
+}
+
 provider "local" {}
 
 provider "kubernetes" {
-  config_path    = "../servers2/kubeconfig/admin.conf"
+  config_path = "../servers2/kubeconfig/admin.conf"
 }
 
 variable "master_ip" {
   description = "IP address of the master node"
+  type        = string
   default     = "10.0.0.10"
 }
 
 variable "ssh_user" {
-  description = "IP address of the master node"
+  description = "SSH user for the master node"
+  type        = string
   default     = "vagrant"
 }
 
 variable "kubernetes_config_path" {
-  description = ""
+  description = "Path to the Kubernetes configuration file"
+  type        = string
   default     = "../servers/kubeconfig/kubeconfig"
 }
 
-
-
 variable "calico_url" {
   description = "URL to download the Calico YAML"
+  type        = string
   default     = "https://docs.projectcalico.org/v3.20/manifests/calico.yaml"
 }
 
 variable "master_private_key" {
-    description = ""
-    default = "../servers2/.vagrant/machines/k8s-master/virtualbox/private_key"
+  description = "Path to the private key for SSH access to the master node"
+  type        = string
+  default     = "../servers2/.vagrant/machines/k8s-master/virtualbox/private_key"
 }
 
 resource "null_resource" "check_nodes_and_download_yaml" {
@@ -73,13 +95,9 @@ resource "null_resource" "apply_kube_bench" {
   }
 }
 
-
-
-
 resource "kubernetes_namespace" "kiratech_test" {
   depends_on = [null_resource.check_nodes_and_download_yaml]
   metadata {
     name = "kiratech-test"
   }
 }
-
