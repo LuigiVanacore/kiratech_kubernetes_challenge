@@ -1,164 +1,132 @@
 ---
 - hosts: all
   become: true
+
   vars:
     dns_servers:
       - 8.8.8.8
       - 1.1.1.1
+
   tasks:
-  - name: Ensure /etc/systemd/resolved.conf.d exists
-    file:
-      path: /etc/systemd/resolved.conf.d
-      state: directory
+    - name: Ensure /etc/systemd/resolved.conf.d exists
+      file:
+        path: /etc/systemd/resolved.conf.d
+        state: directory
 
-  - name: Create or update DNS configuration
-    copy:
-      dest: /etc/systemd/resolved.conf.d/dns_servers.conf
-      content: |
-        [Resolve]
-        DNS={{ dns_servers | join(' ') }}
-    notify:
-      - Restart systemd-resolved
-        
+    - name: Create or update DNS configuration
+      copy:
+        dest: /etc/systemd/resolved.conf.d/dns_servers.conf
+        content: |
+          [Resolve]
+          DNS={{ dns_servers | join(' ') }}
+      notify:
+        - Restart systemd-resolved
 
+    - name: Install necessary packages
+      apt:
+        name: "{{ packages }}"
+        state: present
+        update_cache: yes
+      vars:
+        packages:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+          - gnupg2
+          - net-tools
 
-  - name: Install necessary packages
-    apt:
-      name: "{{ packages }}"
-      state: present
-      update_cache: yes
-    vars:
-      packages:
-      - apt-transport-https
-      - ca-certificates
-      - curl
-      - software-properties-common 
-      - gnupg2
-      - net-tools
-  #installo containerd per essere usato come runtime per i container
-  - name: Install containerd
-    apt: 
-      name: "{{ packages }}"
-      state: present
-      update_cache: yes
-    vars:
-      packages:
-      - containerd
-  #kubernetes richiede che la memoria swap sia eliminata
-  - name: Remove swapfile from /etc/fstab
-    mount:
-      name: "{{ item }}"
-      fstype: swap
-      state: absent
-    with_items:
-      - swap
-      - none
+    - name: Install containerd
+      apt:
+        name: containerd
+        state: present
+        update_cache: yes
 
-  - name: Disable swap
-    command: swapoff -a
-    when: ansible_swaptotal_mb > 0
+    - name: Remove swapfile from /etc/fstab
+      mount:
+        name: "{{ item }}"
+        fstype: swap
+        state: absent
+      with_items:
+        - swap
+        - none
 
-  - name: Ensure the /etc/apt/keyrings directory exists
-    file:
-      path: /etc/apt/keyrings
-      state: directory
-      mode: '0755'
+    - name: Disable swap
+      command: swapoff -a
+      when: ansible_swaptotal_mb > 0
 
-  - name: Add Kubernetes GPG key
-    ansible.builtin.apt_key:
-      url: https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key
-      state: present
-      keyring: /usr/share/keyrings/kubernetes-archive-keyring.gpg
+    - name: Ensure the /etc/apt/keyrings directory exists
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
 
-  - name: Add Kubernetes apt repository
-    ansible.builtin.apt_repository:
-      repo: >-
-        deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg]
-        https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /
-      state: present
-      filename: kubernetes
-      update_cache: true
- #installo kubernetes
-  - name: Install Kubernetes binaries
-    apt: 
-      name: "{{ packages }}"
-      state: present
-      update_cache: yes
-    vars:
-      packages:
-        - kubelet=1.29.0-*
-        - kubeadm=1.29.0-*
-        - kubectl=1.29.0-*
+    - name: Add Kubernetes GPG key
+      ansible.builtin.apt_key:
+        url: https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key
+        state: present
+        keyring: /usr/share/keyrings/kubernetes-archive-keyring.gpg
 
-  - name: Configure containerd
-    blockinfile:
-      create: true
-      path: /etc/modules-load.d/containerd.conf
-      block: |
-        overlay
-        br_netfilter
+    - name: Add Kubernetes apt repository
+      ansible.builtin.apt_repository:
+        repo: >-
+          deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg]
+          https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /
+        state: present
+        filename: kubernetes
+        update_cache: true
 
-  - name: Enable kernel modules
-    shell: |
-      modprobe overlay
-      modprobe br_netfilter
+    - name: Install Kubernetes binaries
+      apt:
+        name: "{{ packages }}"
+        state: present
+        update_cache: yes
+      vars:
+        packages:
+          - kubelet=1.29.0-*
+          - kubeadm=1.29.0-*
+          - kubectl=1.29.0-*
 
-  - name: Configure IP forwarding and iptables
-    blockinfile:
-      create: true
-      path: /etc/sysctl.conf
-      block: |
-        net.bridge.bridge-nf-call-iptables = 1
-        net.ipv4.ip_forward = 1
+    - name: Configure containerd
+      blockinfile:
+        create: true
+        path: /etc/modules-load.d/containerd.conf
+        block: |
+          overlay
+          br_netfilter
 
-  - name: Persist changes
-    command: sysctl -p
-  #devo settare in modo preciso ip del nodo perche' su vagrant 
-  #se non faccio questo dopo il nodo non puo' comunicare con l'api-server
-  - name: Get IP eth1 addr
-    shell: ifconfig eth1 | grep 'inet' | cut -d{{':'}} -f2 | awk '{ print $2 }'
-    register: output
+    - name: Enable kernel modules
+      shell: |
+        modprobe overlay
+        modprobe br_netfilter
+      changed_when: false
 
-  #prendo ed eseguo il commando di join al cluster kubernetes
-  - name: Copy the join command to server location
-    copy: src=join-command dest=/tmp/join-command.sh mode=0777
+    - name: Configure IP forwarding and iptables
+      blockinfile:
+        create: true
+        path: /etc/sysctl.conf
+        block: |
+          net.bridge.bridge-nf-call-iptables = 1
+          net.ipv4.ip_forward = 1
 
-  - name: Configure kubelet
-    lineinfile:
-      path: /lib/systemd/system/kubelet.service.d/10-kubeadm.conf
-      line: Environment="KUBELET_EXTRA_ARGS=--node-ip={{ output.stdout }}"
+    - name: Persist changes
+      command: sysctl -p
+      changed_when: false
 
-  - name: Join the node to cluster
-    command: sh /tmp/join-command.sh
+    - name: Get IP eth1 addr
+      shell: ifconfig eth1 | grep 'inet' | cut -d{{':'}} -f2 | awk '{ print $2 }'
+      register: output
 
+    - name: Copy the join command to server location
+      copy:
+        src: join-command
+        dest: /tmp/join-command.sh
+        mode: '0755'
 
+    - name: Configure kubelet
+      lineinfile:
+        path: /lib/systemd/system/kubelet.service.d/10-kubeadm.conf
+        line: Environment="KUBELET_EXTRA_ARGS=--node-ip={{ output.stdout }}"
 
-  - name: Ensure .kube directory exists
-    file:
-      path: /home/vagrant/.kube
-      state: directory
-      owner: vagrant
-      group: vagrant
-
-  - name: Ensure .bashrc exists
-    file:
-      path: /home/vagrant/.bashrc
-      state: touch
-      owner: vagrant
-      group: vagrant
-
-  - name: Add KUBECONFIG to .bashrc if not already present
-    lineinfile:
-      path: /home/vagrant/.bashrc
-      regexp: '^export KUBECONFIG="\$HOME/.kube/conf"$'
-      line: 'export KUBECONFIG="$HOME/.kube/conf"'
-      state: present
-      owner: vagrant
-      group: vagrant
-
-
-  handlers:
-    - name: Restart systemd-resolved
-      systemd:
-        name: systemd-resolved
-        state: restarted
+    - name: Join the node to cluster
+      command: sh /
