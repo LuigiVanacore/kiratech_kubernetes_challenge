@@ -35,17 +35,6 @@ variable "ssh_user" {
   default     = "vagrant"
 }
 
-variable "kubernetes_config_path" {
-  description = "Path to the Kubernetes configuration file"
-  type        = string
-  default     = "../servers/kubeconfig/kubeconfig"
-}
-
-variable "calico_url" {
-  description = "URL to download the Calico YAML"
-  type        = string
-  default     = "https://docs.projectcalico.org/v3.20/manifests/calico.yaml"
-}
 
 variable "master_private_key" {
   description = "Path to the private key for SSH access to the master node"
