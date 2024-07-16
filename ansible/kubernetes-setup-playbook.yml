@@ -100,6 +100,7 @@
 
     - name: Enable kernel modules
       shell: |
+        set -o pipefail
         modprobe overlay
         modprobe br_netfilter
       changed_when: false
@@ -132,7 +133,10 @@
           register: join_command
 
         - name: Copy join command to local file
-          local_action: copy content="{{ join_command.stdout }}" dest="./join-command"
+          delegate_to: localhost
+          copy:
+            content: "{{ join_command.stdout }}"
+            dest: "./join-command"
           become: true
 
     - name: Perform tasks only on nodes
@@ -233,7 +237,8 @@
         group: vagrant
 
     - name: Reload systemd manager configuration
-      command: systemctl daemon-reload
+      systemd:
+        daemon_reload: true
 
     - name: Restart kubelet service
       systemd:
