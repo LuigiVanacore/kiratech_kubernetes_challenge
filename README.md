@@ -1,4 +1,4 @@
-Inizio Documentazione Challegne Kiratech
+#Inizio Documentazione Challegne Kiratech
 
 08/07
 Dopo aver ricevuto il documento della challenge, ho proveduto a leggere e a cercare di comprendere i requisiti richiesti.
@@ -9,32 +9,42 @@ Alla fine sono riuscito a capire che i requisiti richiesti dalla challenge sono 
     Il cluster dovrà essere composto di un master e 2 worker
 - Le configurazioni da applicare devono garantire il rispetto dei requisiti 
     in termini di Risorse Computazionali, Filesystem e Sicurezza (minima) relativi a Kubernetes.
-- 
+- Il provisioning del cluster Kubernetes deve essere eseguito predisponendo un
+provider Terraform che:
+- Installi un manager e due worker configurando un cluster Kubernetes
+- Crei un namespace denominato “kiratech-test”
+- Esegua un benchmark di security a scelta disponibile pubblicamente
+- Deployare usando Helm un'applicazione sul cluster kubernetes composta da 3 servizi
+- l’applicazione sia deployata in modo tale da permetterne un
+aggiornamento ad una eventuale nuova versione limitando al minimo il tempo
+di indisponibilità dell’applicazione stessa.
+
+I requisiti per avviare questa challenge sono:
+-virtualbox 7.0
+-vagrant 2.41
+-terraform 1.9.1
+
+Per esegure il test su macchina locale, scaricare il repository
+ed installare i plugin per vagrant con questi comandi
+
+'vagrant plugin install vagrant-vbguest'
+'vagrant plugin install vagrant-disksize'
+
+in seguito avviare vagrant con il comando
+'vagrant up'
+
+una volta che le vm sono state avviate, utilizzare
+terraform nella cartella terraform ed eseguire i comandi:
+'terraform init'
+'terraform apply'
+
+Per accedere alla pagina web del frontend dell'app
+collegarsi da browser all'indirizzo ip 10.0.0.10:30080
+e testare l'app.
 
 
 
-
-
-uso il comando:
-vagrant validate
-così da controllare se il vagrant file è corretto
-
-per controllare lo stato delle vm da vagrant uso il comando
-vagrant global-status
-
-quando avviavo vagrant con il comando:
-vagrant up
-
-mi dava come messaggio di errore:
-The guest additions on this VM do not match the installed version of VirtualBox!
-cercando online ho trovato che potevo risolvere utilizzando il comando:
-vagrant plugin install vagrant-vbguest
-
-per configurare la dimensione del disco ho installato il plugin vagrant-discksize
-installabile usando questo comando:
-vagrant plugin install vagrant-disksize
-
-
+##Resoconto della challenge:
 
 Cercando su internet ho trovato questi requisiti minimi per un cluster kubernetes:
 
