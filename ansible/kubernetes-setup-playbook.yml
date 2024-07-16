@@ -140,7 +140,6 @@
             content: "{{ join_command.stdout }}"
             dest: "./join-command"
           become: true
-          mode: 0644
 
     - name: Perform tasks only on nodes
       when: "'nodes' in group_names"
