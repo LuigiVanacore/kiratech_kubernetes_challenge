@@ -331,3 +331,9 @@ e con indirizzo ip di uno dei nodi, per esempio 10.0.0.10:30080
 Avevo pensato di implementare un load balancer locale usando metalLb, ma 
 alla fine ho deciso di tenere semplice l'infrastruttura, dato il poco tempo.
 
+Per gestire il continuos integration, ho deciso di utilizzare Github Actions.
+Questo perchè Github Actions è un servizio di continuos integration gratuito
+offerto da Github, per poter esegure task specifici in remoto sul proprio
+repository git su github. Ho definito dei file di configurazione per 
+workflow per Github action, utilizzando i linter per controllare
+la correttezza dei file di configurazione per Ansible, Terraform e Helm.
