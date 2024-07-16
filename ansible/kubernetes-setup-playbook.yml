@@ -2,12 +2,10 @@
 - hosts: all
   connection: local
   become: true
-  
   vars:
     dns_servers:
       - 8.8.8.8
       - 1.1.1.1
-
   tasks:
     - name: Ensure /etc/systemd/resolved.conf.d exists
       file:
@@ -119,11 +117,15 @@
       command: sysctl -p
       changed_when: false 
 
+
     - name: Perform tasks only on master
       when: "'k8s-master' in group_names"
       block:
         - name: Initialize the Kubernetes cluster using kubeadm
-          command: kubeadm init --apiserver-advertise-address=10.0.0.10 --apiserver-cert-extra-sans=10.0.0.10 --pod-network-cidr=172.16.1.0/16 --node-name "k8s-master"
+          command: >
+            kubeadm init --apiserver-advertise-address=10.0.0.10
+            --apiserver-cert-extra-sans=10.0.0.10 --pod-network-cidr=172.16.1.0/16
+            --node-name "k8s-master"
           register: kubeadm_output
 
         - name: Generate join command
