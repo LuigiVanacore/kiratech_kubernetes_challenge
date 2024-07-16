@@ -12,7 +12,7 @@
         state: directory
         mode: '0755'
 
-    #mi assicuro che la configurazione dei dns sia corretta
+    # mi assicuro che la configurazione dei dns sia corretta
     - name: Create or update DNS configuration
       copy:
         dest: /etc/systemd/resolved.conf.d/dns_servers.conf
@@ -120,7 +120,7 @@
       command: sysctl -p
       changed_when: false
 
-    #inziializzo il master del cluster kubernetes
+    # inziializzo il master del cluster kubernetes
     - name: Perform tasks only on master
       when: "'k8s-master' in group_names"
       block:
@@ -143,7 +143,7 @@
             mode: '0600'
           become: true
 
-    #sui nodi worker joino il cluster
+    # sui nodi worker joino il cluster
     - name: Perform tasks only on nodes
       when: "'nodes' in group_names"
       block:
@@ -238,9 +238,9 @@
         group: vagrant
         mode: '0644'
 
-    #creo la variabile ambiente KUBECONFIG cosi' da essere
-    #sicuro che su Vagrant quando eseguo kubectl mi riesca
-    #a collegare all'api server
+    # creo la variabile ambiente KUBECONFIG cosi' da essere
+    # sicuro che su Vagrant quando eseguo kubectl mi riesca
+    # a collegare all'api server
     - name: Add KUBECONFIG to .bashrc if not already present
       lineinfile:
         path: /home/vagrant/.bashrc
