@@ -6,28 +6,28 @@
   <title>Frontend App</title>
 </head>
 <body>
-  <input type="text" id="message-content" placeholder="Enter your message">
-  <button id="send-message-button">Send Message</button>
-  <button id="get-messages-button">Get Messages</button>
+  <input type="text" id="message-content" placeholder="Inserisci il tuo messaggio">
+  <button id="send-message-button">Invia il messaggio</button>
+  <button id="get-messages-button">Recupera messaggi</button>
   <ul id="messages-list"></ul>
   <div id="error-message"></div>
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      const backendUrl = '/api'; // The frontend server will proxy requests to the backend server
+      const backendUrl = '/api'; 
       const messageContentInput = document.getElementById('message-content');
       const sendMessageButton = document.getElementById('send-message-button');
       const getMessagesButton = document.getElementById('get-messages-button');
       const messagesList = document.getElementById('messages-list');
       const errorMessage = document.getElementById('error-message');
 
-      // Check if elements exist
+    
       if (!messageContentInput || !sendMessageButton || !getMessagesButton || !messagesList || !errorMessage) {
-        console.error('One or more required elements are missing');
+        console.error('Sono mancanti uno o piu elementi');
         return;
       }
 
-      // Send message to backend
+      // Invio messaggi a backend
       sendMessageButton.addEventListener('click', () => {
         const name = messageContentInput.value;
 
@@ -48,11 +48,11 @@
             }
           })
           .catch(error => {
-            errorMessage.textContent = 'Error sending message';
+            errorMessage.textContent = 'Errore invio messaggi';
           });
       });
 
-      // Get messages from backend
+      // Recupero messaggi da backend
       getMessagesButton.addEventListener('click', () => {
         fetch(`${backendUrl}/items`)
           .then(response => response.json())
@@ -70,7 +70,7 @@
             }
           })
           .catch(error => {
-            errorMessage.textContent = 'Error fetching messages';
+            errorMessage.textContent = 'Errore recupero messaggi';
           });
       });
     });

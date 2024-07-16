@@ -18,7 +18,7 @@ function connectWithRetry() {
   }).then(() => {
     console.log('Connessione MongoDB');
   }).catch((error) => {
-    console.error('Errore connesione MongoDB:', error.message);
+    console.error('Errore connessione MongoDB:', error.message);
     console.log('Retry 5 secondi...');
     setTimeout(connectWithRetry, 5000); 
   });
@@ -28,7 +28,7 @@ connectWithRetry();
 
 const db = mongoose.connection;
 db.on('error', (error) => {
-  console.error('Connection error:', error.message);
+  console.error('Errore connessione:', error.message);
 });
 
 const itemSchema = new mongoose.Schema({
@@ -42,8 +42,8 @@ app.get('/api/items', async (req, res) => {
     const items = await Item.find();
     res.json(items);
   } catch (error) {
-    console.error('Error fetching items:', error.message);
-    res.status(500).json({ message: 'Error fetching items', error: error.message });
+    console.error('Errore recupero messaggi:', error.message);
+    res.status(500).json({ message: 'Errore recupero messaggi', error: error.message });
   }
 });
 
@@ -53,11 +53,11 @@ app.post('/api/items', async (req, res) => {
     await newItem.save();
     res.json(newItem);
   } catch (error) {
-    console.error('Error adding item:', error.message);
-    res.status(500).json({ message: 'Error adding item', error: error.message });
+    console.error('Errore salvataggio messaggio:', error.message);
+    res.status(500).json({ message: 'Errore salvataggio messaggio', error: error.message });
   }
 });
 
 app.listen(port, () => {
-  console.log(`Backend server running at http://localhost:${port}`);
+  console.log(`Backend server http://localhost:${port}`);
 });
