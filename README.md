@@ -1,4 +1,4 @@
-#Inizio Documentazione Challegne Kiratech
+# Inizio Documentazione Challegne Kiratech
 
 08/07
 Dopo aver ricevuto il documento della challenge, ho proveduto a leggere e a cercare di comprendere i requisiti richiesti.
@@ -44,7 +44,7 @@ e testare l'app.
 
 
 
-##Resoconto della challenge:
+## Resoconto della challenge:
 
 Cercando su internet ho trovato questi requisiti minimi per un cluster kubernetes:
 
