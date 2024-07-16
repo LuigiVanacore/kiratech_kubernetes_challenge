@@ -12,6 +12,7 @@
         state: directory
         mode: '0755'
 
+    #mi assicuro che la configurazione dei dns sia corretta
     - name: Create or update DNS configuration
       copy:
         dest: /etc/systemd/resolved.conf.d/dns_servers.conf
@@ -42,7 +43,7 @@
         state: present
         update_cache: true
 
-    # Kubernetes requires swap to be disabled
+    # Kubernetes richiede che la memoria swap sia disattivata
     - name: Remove swapfile from /etc/fstab
       mount:
         name: "{{ item }}"
@@ -63,7 +64,7 @@
         state: directory
         mode: '0755'
 
-    # Install Kubernetes
+    # Installo Kubernetes
     - name: Add Kubernetes GPG key
       ansible.builtin.apt_key:
         url: https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key
@@ -119,7 +120,7 @@
       command: sysctl -p
       changed_when: false
 
-
+    #inziializzo il master del cluster kubernetes
     - name: Perform tasks only on master
       when: "'k8s-master' in group_names"
       block:
@@ -142,6 +143,7 @@
             mode: '0600'
           become: true
 
+    #sui nodi worker joino il cluster
     - name: Perform tasks only on nodes
       when: "'nodes' in group_names"
       block:
@@ -206,7 +208,9 @@
             group: vagrant
             mode: '0644'
 
-    # Set precise node IP for Vagrant
+    # Devo settare la variabile d'ambiente KUBELET_EXTRA_ARGS
+    # cosi' che su Vagrant i nodi abbiano settati i corretti indirizzi ip
+    # per da poter comunicare fra di loro
     - name: Get IP eth1 addr
       shell: set -o pipefail && ifconfig eth1 | grep 'inet' | cut -d':' -f2 | awk '{ print $2 }'
       register: output
@@ -234,6 +238,9 @@
         group: vagrant
         mode: '0644'
 
+    #creo la variabile ambiente KUBECONFIG cosi' da essere
+    #sicuro che su Vagrant quando eseguo kubectl mi riesca
+    #a collegare all'api server
     - name: Add KUBECONFIG to .bashrc if not already present
       lineinfile:
         path: /home/vagrant/.bashrc
