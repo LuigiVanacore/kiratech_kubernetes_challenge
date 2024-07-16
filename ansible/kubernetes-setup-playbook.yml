@@ -211,9 +211,12 @@
     # cosi' che su Vagrant i nodi abbiano settati i corretti indirizzi ip
     # per da poter comunicare fra di loro
     - name: Get IP eth1 addr
-      shell: |
-        /sbin/ifconfig eth1 | grep 'inet' | cut -d':' -f2 | awk '{ print $2 }'
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          /sbin/ifconfig eth1 | grep 'inet' | cut -d':' -f2 | awk '{ print $2 }'
       register: output
+      executable: /bin/bash
       changed_when: false
 
     - name: Configure kubelet
