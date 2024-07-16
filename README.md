@@ -20,23 +20,23 @@ aggiornamento ad una eventuale nuova versione limitando al minimo il tempo
 di indisponibilità dell’applicazione stessa.
 
 I requisiti per avviare questa challenge sono:
--virtualbox 7.0
--vagrant 2.41
--terraform 1.9.1
+- **virtualbox 7.0**
+- **vagrant 2.41**
+- **terraform 1.9.1**
 
 Per esegure il test su macchina locale, scaricare il repository
 ed installare i plugin per vagrant con questi comandi
 
-'vagrant plugin install vagrant-vbguest'
-'vagrant plugin install vagrant-disksize'
+**vagrant plugin install vagrant-vbguest**
+**vagrant plugin install vagrant-disksize**
 
 in seguito avviare vagrant con il comando
-'vagrant up'
+**vagrant up**
 
 una volta che le vm sono state avviate, utilizzare
 terraform nella cartella terraform ed eseguire i comandi:
-'terraform init'
-'terraform apply'
+- **terraform init**
+- **terraform apply**
 
 Per accedere alla pagina web del frontend dell'app
 collegarsi da browser all'indirizzo ip 10.0.0.10:30080
@@ -318,7 +318,7 @@ Questo significa che si può inviare quasi qualsiasi tipo di traffico, come HTTP
 Il grande svantaggio è che ogni servizio che si espone con un LoadBalancer otterrà il proprio indirizzo IP
  e dovrai pagare per un LoadBalancer per ogni servizio esposto se il servizio è a pagamento.
 
-Ingress
+- Ingress
 
 A differenza di tutti gli esempi sopra, Ingress in realtà noe è un tipo di servizio. 
 Invece, si trova davanti a più servizi e agisce come un "router intelligente" o punto di ingresso nel tuo cluster.
