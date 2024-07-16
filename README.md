@@ -57,7 +57,9 @@ Cercando su internet ho trovato questi requisiti minimi per un cluster kubernete
     - Il filesystem sarà ext4
     - Su ogni vm sarà disabilitato la memoria swap
 
-Per i requisiti di sicurezza
+Per i requisiti di sicurezza ho eseguito il benchmark di sicurezza sul cluster
+e mi sono assicurato che poi la configurazione deployata non avesso
+nessun fail per quanto riguarda la sicurezza dei nodi
 
 Per il provision delle vm ho scelto di usare Vagrant.
 Questo perchè Vagrant è un tool per il provision di VM su workstation,
@@ -90,23 +92,18 @@ Kubernetes. Così ho creato un cluster di vm, di cui un master node
 e due worker node per kubernetes. 
 
 Il problema è che creare Kubernetes su Vagrant, ho scoperto poi
-porta diversi problemi, non facilmente identificabili e bisogna
-quindi fare delle impostazioni sulle macchine per fare
-in modo che kubernetes funzioni in modo corretto su Vagrant.
+porta diversi problemi non facilmente identificabili. Bisogna
+quindi fare delle impostazioni specifiche sulle macchine per fare
+in modo che kubernetes funzionassi in modo corretto.
 Questo perchè, da quello che ho potuto capire, Vagrant crea molte
-interfacce di rete virtuali e Kubernetes fa fatica a capire quale
-configurare per la comunicazioni fra per esempio api-server e nodi.
+interfacce di rete virtuali e Kubernetes non riesce a capire quale
+configurare in modo corretto per la comunicazioni fra, per esempio, api-server e nodi.
 Quindi nel playbook di Ansible ho dovuto inserire diversi task
 che configurassero la macchina in modo tale che kubernetes 
-funzioni in modo corretto.
+funzionassi in modo corretto.
 Questo però ha richiesto parecchio tempo e debugging, comportando quindi
 che la maggiore difficoltà per me è stato proprio quello di riuscire
 a installare in modo corretto kubernetes su vm gestite da Vagrant.
-I problemi principali è che avendo Vagrant diverse interfaccie di rete virtuali,
-kubernetes da solo sbagliava a configurare in modo corretto gli indirizzi
-dell'api server e dei nodi. Quindi quando eseguivo semplici comandi con kubectl
-mi dava errori, per esempio che non riusciva a connetersi in maniera corretta
-ai nodi del cluster.
 Il resto dei task non sono stati invece per fortuna troppo difficili
 da completare.
 
