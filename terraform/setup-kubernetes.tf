@@ -10,7 +10,7 @@ terraform {
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "2.14.1"
+      version = "2.29"
     }
   }
 
@@ -20,7 +20,7 @@ terraform {
 provider "local" {}
 
 provider "kubernetes" {
-  config_path = "../servers2/kubeconfig/admin.conf"
+  config_path = "../kubeconfig/admin.conf"
 }
 
 variable "master_ip" {
@@ -39,7 +39,7 @@ variable "ssh_user" {
 variable "master_private_key" {
   description = "Path to the private key for SSH access to the master node"
   type        = string
-  default     = "../servers2/.vagrant/machines/k8s-master/virtualbox/private_key"
+  default     = "../.vagrant/machines/k8s-master/virtualbox/private_key"
 }
 
 resource "null_resource" "check_nodes_and_download_yaml" {
@@ -90,3 +90,26 @@ resource "kubernetes_namespace" "kiratech_test" {
     name = "kiratech-test"
   }
 }
+
+
+resource "null_resource" "install_helm_and_deploy_app" {
+  depends_on = [kubernetes_namespace.kiratech_test]
+  provisioner "remote-exec" {
+    inline = [
+      "curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null",
+      "sudo apt-get install apt-transport-https --yes",
+      "echo \"deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main\" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list",
+      "sudo apt-get update",
+      "sudo apt-get install helm --yes",
+      "helm install myapp /vagrant/helm/"
+    ]
+
+    connection {
+      type        = "ssh"
+      host        = var.master_ip
+      user        = var.ssh_user
+      private_key = file(var.master_private_key)
+    }
+  }
+}
+
