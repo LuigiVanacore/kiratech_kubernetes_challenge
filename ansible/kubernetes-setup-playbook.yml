@@ -1,6 +1,5 @@
 ---
 - hosts: all
-  delegate_to: localhost
   become: true
   vars:
     dns_servers:
