@@ -1,6 +1,6 @@
 ---
 - hosts: all
-  connection: local
+  delegate_to: localhost
   become: true
   vars:
     dns_servers:
@@ -11,7 +11,7 @@
       file:
         path: /etc/systemd/resolved.conf.d
         state: directory
-        mode: '0755' 
+        mode: '0755'
 
     - name: Create or update DNS configuration
       copy:
@@ -56,13 +56,13 @@
     - name: Disable swap
       command: swapoff -a
       when: ansible_swaptotal_mb | int > 0
-      changed_when: false  
+      changed_when: false
 
     - name: Ensure the /etc/apt/keyrings directory exists
       file:
         path: /etc/apt/keyrings
         state: directory
-        mode: '0755' 
+        mode: '0755'
 
     # Install Kubernetes
     - name: Add Kubernetes GPG key
@@ -103,7 +103,7 @@
       shell: |
         modprobe overlay
         modprobe br_netfilter
-      changed_when: false  
+      changed_when: false
 
     - name: Configure IP forwarding and iptables
       blockinfile:
