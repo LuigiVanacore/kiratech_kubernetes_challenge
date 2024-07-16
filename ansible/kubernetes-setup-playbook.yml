@@ -211,7 +211,8 @@
     # cosi' che su Vagrant i nodi abbiano settati i corretti indirizzi ip
     # per da poter comunicare fra di loro
     - name: Get IP eth1 addr
-      shell: set -o pipefail && ifconfig eth1 | grep 'inet' | cut -d':' -f2 | awk '{ print $2 }'
+      shell: |
+        /sbin/ifconfig eth1 | grep 'inet' | cut -d':' -f2 | awk '{ print $2 }'
       register: output
       changed_when: false
 
