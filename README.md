@@ -27,11 +27,11 @@ I requisiti per avviare questa challenge sono:
 Per esegure il test su macchina locale, scaricare il repository
 ed installare i plugin per vagrant con questi comandi
 
-**vagrant plugin install vagrant-vbguest**
-**vagrant plugin install vagrant-disksize**
+- **vagrant plugin install vagrant-vbguest**
+- **vagrant plugin install vagrant-disksize**
 
 in seguito avviare vagrant con il comando
-**vagrant up**
+- **vagrant up**
 
 una volta che le vm sono state avviate, utilizzare
 terraform nella cartella terraform ed eseguire i comandi:
