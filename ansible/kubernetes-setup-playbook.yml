@@ -231,7 +231,7 @@
         state: directory
         owner: vagrant
         group: vagrant
-        mode: '0664'
+        mode: '0666'
 
     - name: Ensure .bashrc exists
       file:
@@ -239,7 +239,7 @@
         state: touch
         owner: vagrant
         group: vagrant
-        mode: '0644'
+        mode: '0666'
 
     # creo la variabile ambiente KUBECONFIG cosi' da essere
     # sicuro che su Vagrant quando eseguo kubectl mi riesca
