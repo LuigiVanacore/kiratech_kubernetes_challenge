@@ -215,8 +215,8 @@
         cmd: |
           set -o pipefail
           /sbin/ifconfig eth1 | grep 'inet' | cut -d':' -f2 | awk '{ print $2 }'
+        executable: /bin/bash
       register: output
-      executable: /bin/bash
       changed_when: false
 
     - name: Configure kubelet
