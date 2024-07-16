@@ -102,7 +102,6 @@
 
     - name: Enable kernel modules
       shell: |
-        set -o pipefail
         modprobe overlay
         modprobe br_netfilter
       changed_when: false
