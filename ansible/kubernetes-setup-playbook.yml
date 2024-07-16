@@ -139,6 +139,7 @@
           copy:
             content: "{{ join_command.stdout }}"
             dest: "./join-command"
+            mode: '0600'
           become: true
 
     - name: Perform tasks only on nodes
@@ -209,6 +210,7 @@
     - name: Get IP eth1 addr
       shell: set -o pipefail && ifconfig eth1 | grep 'inet' | cut -d':' -f2 | awk '{ print $2 }'
       register: output
+      changed_when: false
 
     - name: Configure kubelet
       lineinfile:
@@ -222,6 +224,7 @@
         state: directory
         owner: vagrant
         group: vagrant
+        mode: '0664'
 
     - name: Ensure .bashrc exists
       file:
@@ -229,6 +232,7 @@
         state: touch
         owner: vagrant
         group: vagrant
+        mode: '0644'
 
     - name: Add KUBECONFIG to .bashrc if not already present
       lineinfile:
