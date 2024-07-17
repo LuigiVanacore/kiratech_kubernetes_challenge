@@ -98,7 +98,7 @@
         block: |
           overlay
           br_netfilter
-        mode: 0644
+        mode: 0777
 
     - name: Enable kernel modules
       shell: |
@@ -113,7 +113,7 @@
         block: |
           net.bridge.bridge-nf-call-iptables = 1
           net.ipv4.ip_forward = 1
-        mode: 0644
+        mode: 0777
 
     - name: Persist changes
       command: sysctl -p
@@ -164,7 +164,7 @@
             state: directory
             owner: vagrant
             group: vagrant
-            mode: '0755'
+            mode: '0777'
 
         - name: Setup kubeconfig for vagrant user
           copy:
@@ -173,7 +173,7 @@
             remote_src: true
             owner: vagrant
             group: vagrant
-            mode: '0644'
+            mode: '0777'
 
     - name: Create kube directory
       file:
@@ -181,7 +181,7 @@
         state: directory
         owner: vagrant
         group: vagrant
-        mode: '0755'
+        mode: '0777'
 
     - name: Perform tasks only on master
       when: "'k8s-master' in group_names"
@@ -193,7 +193,7 @@
             remote_src: true
             owner: vagrant
             group: vagrant
-            mode: '0644'
+            mode: '0777'
 
     - name: Perform tasks only on nodes
       when: "'nodes' in group_names"
@@ -205,7 +205,7 @@
             remote_src: true
             owner: vagrant
             group: vagrant
-            mode: '0644'
+            mode: '0777'
 
     # Devo settare la variabile d'ambiente KUBELET_EXTRA_ARGS
     # cosi' che su Vagrant i nodi abbiano settati i corretti indirizzi ip
@@ -231,7 +231,7 @@
         state: directory
         owner: vagrant
         group: vagrant
-        mode: '0666'
+        mode: '0777'
 
     - name: Ensure .bashrc exists
       file:
@@ -239,7 +239,7 @@
         state: touch
         owner: vagrant
         group: vagrant
-        mode: '0666'
+        mode: '0777'
 
     # creo la variabile ambiente KUBECONFIG cosi' da essere
     # sicuro che su Vagrant quando eseguo kubectl mi riesca
